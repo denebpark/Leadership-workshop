@@ -3,10 +3,14 @@ import { SYSTEM_INSTRUCTION } from "../constants";
 import { Answers, VisionResult } from "../types";
 
 export const generateVision = async (answers: Answers): Promise<VisionResult> => {
-  // [수정완료] Vercel 환경 변수에서 API 키를 안전하게 가져오도록 변경했습니다.
+  // [수정 1] Vercel 환경 변수에서 API 키 가져오기
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GOOGLE_API_KEY;
   
-  // 키가 제대로 로드되었는지 확인하고 AI를 초기화합니다.
+  // 키 확인
+  if (!apiKey) {
+    console.error("API Key is missing! Check Vercel Environment Variables.");
+  }
+
   const ai = new GoogleGenAI({ apiKey: apiKey });
   
   const userAnswers = {
@@ -31,9 +35,9 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   `;
 
   try {
-    // Upgraded to gemini-3-pro-preview for complex reasoning task as per guidelines.
+    // [수정 2] 모델을 'gemini-1.5-flash'로 변경 (무료 사용량 넉넉함 + 속도 빠름)
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
+      model: "gemini-1.5-flash", 
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -54,13 +58,11 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
       }
     });
 
-    // response.text is a property, not a method.
     const rawText = response.text;
     if (!rawText) {
       throw new Error("AI로부터 응답을 받지 못했습니다.");
     }
 
-    // Since responseMimeType is set to application/json, we can parse the trimmed text directly.
     const result = JSON.parse(rawText.trim());
     
     return {
@@ -70,14 +72,19 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
       selfMessage: userAnswers.selfMessage,
       userName: userAnswers.name
     } as VisionResult;
+
   } catch (error: any) {
     console.error("Vision generation failed details:", error);
     
+    // 429 에러(한도 초과)일 경우 더 친절한 메시지 제공
+    if (error.message?.includes("429") || error.message?.includes("Quota")) {
+        throw new Error("사용량이 많아 잠시 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+    }
+
     if (error.message?.includes("Safety")) {
       throw new Error("입력 내용 중 부적절한 표현이 포함되어 있을 수 있습니다. 내용을 수정해 주세요.");
     }
     
-    // Allow the error to propagate so App.tsx can handle special cases like API key issues.
     throw error;
   }
 };
