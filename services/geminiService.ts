@@ -1,11 +1,13 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { SYSTEM_INSTRUCTION } from "../constants";
 import { Answers, VisionResult } from "../types";
 
 export const generateVision = async (answers: Answers): Promise<VisionResult> => {
-  // Always use { apiKey: process.env.API_KEY } directly when initializing.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // [수정완료] Vercel 환경 변수에서 API 키를 안전하게 가져오도록 변경했습니다.
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GOOGLE_API_KEY;
+  
+  // 키가 제대로 로드되었는지 확인하고 AI를 초기화합니다.
+  const ai = new GoogleGenAI({ apiKey: apiKey });
   
   const userAnswers = {
     name: (answers[0] || '리더').trim(),
