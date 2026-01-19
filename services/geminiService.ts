@@ -3,14 +3,14 @@ import { SYSTEM_INSTRUCTION } from "../constants";
 import { Answers, VisionResult } from "../types";
 
 export const generateVision = async (answers: Answers): Promise<VisionResult> => {
-  // [최종 완료] Vercel 환경 변수에서 API 키를 가져옵니다.
+  // 1. Vercel 환경 변수에서 API 키 가져오기
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GOOGLE_API_KEY;
 
   if (!apiKey) {
     console.error("API Key is missing! Check Vercel Environment Variables.");
   }
 
-  // AI 초기화
+  // 2. AI 초기화
   const ai = new GoogleGenAI({ apiKey: apiKey });
   
   const userAnswers = {
@@ -35,9 +35,10 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   `;
 
   try {
-    // [최종 설정] 결제 계정이 연결되었으므로, 가장 빠르고 안정적인 정식 모델을 사용합니다.
+    // [수정 핵심] 별명 대신 '주민등록상 본명(001)'을 사용합니다.
+    // 결제 계정이 연결되어 있으므로 이 정식 버전을 안정적으로 쓸 수 있습니다.
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash", 
+      model: "gemini-1.5-flash-001", 
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -76,7 +77,11 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   } catch (error: any) {
     console.error("Vision generation failed details:", error);
     
-    // Safety 설정 관련 에러만 체크
+    // 에러 메시지 처리
+    if (error.message?.includes("429") || error.message?.includes("Quota")) {
+        throw new Error("사용량이 많아 잠시 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+    }
+
     if (error.message?.includes("Safety")) {
       throw new Error("입력 내용 중 부적절한 표현이 포함되어 있을 수 있습니다. 내용을 수정해 주세요.");
     }
