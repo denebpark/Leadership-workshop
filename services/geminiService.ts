@@ -35,9 +35,10 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   `;
 
   try {
-    // [수정 핵심] 모델 이름을 'gemini-1.5-flash-001' (정식 명칭)으로 변경
+    // [수정 핵심] 'gemini-2.0-flash-exp' 사용
+    // (이 모델은 최신 Preview 버전이라 인식률이 높고, 무료이며 매우 빠릅니다)
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash-001", 
+      model: "gemini-2.0-flash-exp", 
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -83,7 +84,7 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
 
     // 모델을 못 찾을 경우를 대비한 안내
     if (error.message?.includes("404") || error.message?.includes("not found")) {
-         throw new Error("AI 모델 연결에 일시적인 문제가 있습니다. 잠시 후 다시 시도해 주세요.");
+         throw new Error("AI 모델 연결에 문제가 있습니다. (모델명 확인 필요)");
     }
 
     if (error.message?.includes("Safety")) {
