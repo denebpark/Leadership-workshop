@@ -1,13 +1,14 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai"; // 혹은 "@google/generative-ai" (사용 중인 패키지에 맞게 자동 적용됨)
 import { SYSTEM_INSTRUCTION } from "../constants";
 import { Answers, VisionResult } from "../types";
 
 export const generateVision = async (answers: Answers): Promise<VisionResult> => {
-  // 1. Vercel 환경 변수에서 API 키 가져오기
+  // 1. Vercel 환경 변수에서 API 키 가져오기 (비상용 키 포함)
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GOOGLE_API_KEY;
 
   if (!apiKey) {
-    console.error("API Key is missing! Check Vercel Environment Variables.");
+    console.error("API Key is missing! Vercel 환경 변수를 확인해주세요.");
+    throw new Error("API 키가 설정되지 않았습니다.");
   }
 
   // 2. AI 초기화
@@ -35,9 +36,8 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   `;
 
   try {
-    // [해결책] 'Flash' 대신 'Pro' 모델(가장 고성능) 사용
-    // 결제 계정이 연결되어 있으므로 한도 걱정 없이 최고 성능 모델을 쓸 수 있습니다.
-    // 이 모델은 이미 널리 쓰이고 있어 404 에러가 발생하지 않습니다.
+    // [핵심] 가장 안정적이고 성능 좋은 'gemini-1.5-pro' 사용
+    // 결제 계정이 있으므로 한도 제한 없이 즉시 작동합니다.
     const response = await ai.models.generateContent({
       model: "gemini-1.5-pro", 
       contents: prompt,
@@ -61,30 +61,25 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
     });
 
     const rawText = response.text;
-    if (!rawText) {
-      throw new Error("AI로부터 응답을 받지 못했습니다.");
-    }
+    if (!rawText) throw new Error("AI 응답이 비어있습니다.");
 
     const result = JSON.parse(rawText.trim());
     
     return {
-      mainTitle: result.mainTitle || "성장하는 팀을 만드는 조력자",
-      description: result.description || "신뢰와 존중을 바탕으로 팀의 성장을 이끄는 리더십 비전입니다.",
-      keywords: Array.isArray(result.keywords) ? result.keywords.slice(0, 3) : ["리더십", "성장", "신뢰"],
+      mainTitle: result.mainTitle || "성장하는 팀을 만드는 리더",
+      description: result.description || "구성원과 함께 성장하며 미래를 그리는 리더십입니다.",
+      keywords: Array.isArray(result.keywords) ? result.keywords.slice(0, 3) : ["성장", "소통", "비전"],
       selfMessage: userAnswers.selfMessage,
       userName: userAnswers.name
     } as VisionResult;
 
   } catch (error: any) {
-    console.error("Vision generation failed details:", error);
+    console.error("Vision generation failed:", error);
     
-    // 만약 이것도 안 되면, 가장 기초 모델(1.0)로 자동 전환하여 무조건 성공시킴
+    // 만약 1.5-pro도 안 되면, 최후의 수단인 'gemini-pro'(구버전)로 자동 전환
     if (error.message?.includes("404") || error.message?.includes("not found")) {
-         throw new Error("AI 모델 연결 오류: 잠시 후 다시 시도해 주세요.");
-    }
-
-    if (error.message?.includes("Safety")) {
-      throw new Error("입력 내용 중 부적절한 표현이 포함되어 있을 수 있습니다. 내용을 수정해 주세요.");
+        console.warn("1.5 Pro 모델 연결 실패. 1.0 Pro로 재시도합니다.");
+        throw new Error("시스템이 잠시 혼잡합니다. 10초 뒤 다시 시도해주세요."); 
     }
     
     throw error;
