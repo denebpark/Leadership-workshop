@@ -3,14 +3,14 @@ import { SYSTEM_INSTRUCTION } from "../constants";
 import { Answers, VisionResult } from "../types";
 
 export const generateVision = async (answers: Answers): Promise<VisionResult> => {
-  // [수정1] Vercel 환경 변수에서 API 키를 가져옵니다.
+  // 1. Vercel 환경 변수에서 API 키 가져오기
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.GOOGLE_API_KEY;
 
   if (!apiKey) {
     console.error("API Key is missing! Check Vercel Environment Variables.");
   }
 
-  // AI 초기화
+  // 2. AI 초기화
   const ai = new GoogleGenAI({ apiKey: apiKey });
   
   const userAnswers = {
@@ -35,9 +35,9 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   `;
 
   try {
-    // [수정2] 모델을 'gemini-1.5-flash'로 변경 (무료 사용량 넉넉함 + 속도 빠름)
+    // [수정 핵심] 모델 이름을 'gemini-1.5-flash-001' (정식 명칭)으로 변경
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash", 
+      model: "gemini-1.5-flash-001", 
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -76,9 +76,14 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   } catch (error: any) {
     console.error("Vision generation failed details:", error);
     
-    // 에러 발생 시 사용자에게 더 친절한 메시지 제공
+    // 에러 메시지 처리
     if (error.message?.includes("429") || error.message?.includes("Quota")) {
         throw new Error("사용량이 많아 잠시 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+    }
+
+    // 모델을 못 찾을 경우를 대비한 안내
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+         throw new Error("AI 모델 연결에 일시적인 문제가 있습니다. 잠시 후 다시 시도해 주세요.");
     }
 
     if (error.message?.includes("Safety")) {
