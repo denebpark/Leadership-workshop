@@ -35,8 +35,8 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   `;
 
   try {
-    // [수정 핵심] 별명 대신 '주민등록상 본명(001)'을 사용합니다.
-    // 결제 계정이 연결되어 있으므로 이 정식 버전을 안정적으로 쓸 수 있습니다.
+    // [핵심 수정] 모델 이름을 'gemini-1.5-flash-001' (버전 번호 포함)로 명시
+    // 이렇게 하면 404 에러가 사라집니다.
     const response = await ai.models.generateContent({
       model: "gemini-1.5-flash-001", 
       contents: prompt,
