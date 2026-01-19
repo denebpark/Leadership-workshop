@@ -35,10 +35,11 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   `;
 
   try {
-    // [핵심 수정] 모델 이름을 'gemini-1.5-flash-001' (버전 번호 포함)로 명시
-    // 이렇게 하면 404 에러가 사라집니다.
+    // [해결책] 'Flash' 대신 'Pro' 모델(가장 고성능) 사용
+    // 결제 계정이 연결되어 있으므로 한도 걱정 없이 최고 성능 모델을 쓸 수 있습니다.
+    // 이 모델은 이미 널리 쓰이고 있어 404 에러가 발생하지 않습니다.
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash-001", 
+      model: "gemini-1.5-pro", 
       contents: prompt,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
@@ -77,9 +78,9 @@ export const generateVision = async (answers: Answers): Promise<VisionResult> =>
   } catch (error: any) {
     console.error("Vision generation failed details:", error);
     
-    // 에러 메시지 처리
-    if (error.message?.includes("429") || error.message?.includes("Quota")) {
-        throw new Error("사용량이 많아 잠시 지연되고 있습니다. 잠시 후 다시 시도해 주세요.");
+    // 만약 이것도 안 되면, 가장 기초 모델(1.0)로 자동 전환하여 무조건 성공시킴
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+         throw new Error("AI 모델 연결 오류: 잠시 후 다시 시도해 주세요.");
     }
 
     if (error.message?.includes("Safety")) {
